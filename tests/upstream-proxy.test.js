@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import http from "node:http";
 import { callJsonUpstream, proxyResponsesApi } from "../src/upstream.js";
 
 test("upstream requests use HTTPS proxy dispatcher when configured", async () => {
@@ -39,15 +40,21 @@ test("upstream requests use HTTPS proxy dispatcher when configured", async () =>
 });
 
 test("codex_openai responses use ChatGPT Codex backend and forward Codex headers", async () => {
-  const originalFetch = globalThis.fetch;
   const originalBackend = process.env.CODEXBRIDGE_CHATGPT_CODEX_BASE_URL;
-  let seenUrl = "";
-  let seenInit = null;
+  let seenRequest = null;
 
-  globalThis.fetch = async (url, init) => {
-    seenUrl = String(url);
-    seenInit = init;
-    return new Response(
+  const upstream = httpServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) {
+      chunks.push(chunk);
+    }
+    seenRequest = {
+      url: req.url,
+      headers: req.headers,
+      body: Buffer.concat(chunks).toString("utf8"),
+    };
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(
       JSON.stringify({
         id: "resp_subscription",
         object: "response",
@@ -56,16 +63,12 @@ test("codex_openai responses use ChatGPT Codex backend and forward Codex headers
         output: [],
         output_text: "hello from subscription",
       }),
-      {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      },
     );
-  };
+  });
 
   try {
-    process.env.CODEXBRIDGE_CHATGPT_CODEX_BASE_URL =
-      "https://chatgpt.test/backend-api/codex";
+    await listen(upstream);
+    process.env.CODEXBRIDGE_CHATGPT_CODEX_BASE_URL = `${serverUrl(upstream)}/backend-api/codex`;
 
     const res = collectResponse();
     await proxyResponsesApi(
@@ -97,23 +100,23 @@ test("codex_openai responses use ChatGPT Codex backend and forward Codex headers
       },
     );
 
-    assert.equal(seenUrl, "https://chatgpt.test/backend-api/codex/responses");
-    assert.equal(seenInit.headers.authorization, "Bearer codex-openai-token");
-    assert.equal(seenInit.headers.accept, "text/event-stream");
-    assert.equal(seenInit.headers["chatgpt-account-id"], "acct_123");
-    assert.equal(seenInit.headers["session-id"], "sess_123");
-    assert.equal(seenInit.headers["thread-id"], "thread_123");
-    assert.equal(seenInit.headers["x-codex-turn-state"], "sticky_123");
-    assert.equal(seenInit.headers["x-codex-beta-features"], "feature-a");
-    assert.equal(JSON.parse(seenInit.body).model, "gpt-5.5");
+    assert.equal(seenRequest.url, "/backend-api/codex/responses");
+    assert.equal(seenRequest.headers.authorization, "Bearer codex-openai-token");
+    assert.equal(seenRequest.headers.accept, "text/event-stream");
+    assert.equal(seenRequest.headers["chatgpt-account-id"], "acct_123");
+    assert.equal(seenRequest.headers["session-id"], "sess_123");
+    assert.equal(seenRequest.headers["thread-id"], "thread_123");
+    assert.equal(seenRequest.headers["x-codex-turn-state"], "sticky_123");
+    assert.equal(seenRequest.headers["x-codex-beta-features"], "feature-a");
+    assert.equal(JSON.parse(seenRequest.body).model, "gpt-5.5");
     assert.match(res.body(), /hello from subscription/);
   } finally {
-    globalThis.fetch = originalFetch;
     if (originalBackend === undefined) {
       delete process.env.CODEXBRIDGE_CHATGPT_CODEX_BASE_URL;
     } else {
       process.env.CODEXBRIDGE_CHATGPT_CODEX_BASE_URL = originalBackend;
     }
+    await close(upstream);
   }
 });
 
@@ -151,6 +154,25 @@ function proxyEnvKeys() {
     "NO_PROXY",
     "no_proxy",
   ];
+}
+
+function httpServer(handler) {
+  return http.createServer(handler);
+}
+
+function listen(server) {
+  return new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+}
+
+function close(server) {
+  return new Promise((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+}
+
+function serverUrl(server) {
+  const address = server.address();
+  return `http://${address.address}:${address.port}`;
 }
 
 function collectResponse() {
