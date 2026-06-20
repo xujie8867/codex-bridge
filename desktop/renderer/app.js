@@ -50,7 +50,15 @@ document.querySelector("#initializeCodex").addEventListener("click", (event) =>
   runAction(event.currentTarget, async () => {
     await api.initializeCodex();
     await refresh();
-    showToast("Codex 配置已初始化：模型目录和 config.toml 都已写入。");
+    showToast("CodexBridge 配置已更新：模型目录和 config.toml 都已写入。");
+  }),
+);
+
+document.querySelector("#restoreCodexConfig").addEventListener("click", (event) =>
+  runAction(event.currentTarget, async () => {
+    await api.restoreCodexConfig();
+    await refresh();
+    showToast("Codex 配置已恢复到 CodexBridge 写入前的备份。");
   }),
 );
 
@@ -189,8 +197,8 @@ function renderProviders() {
         <label>
           <span>${escapeHtml(provider.keyLabel || "API Key")}</span>
           <div class="secret-row">
-            <input type="password" data-key-env="${escapeHtml(provider.keyEnv)}" placeholder="${saved ? "已保存，留空不修改" : "sk-..."}" />
-            <button class="ghost-button light small" type="button" data-toggle-secret>显示</button>
+            <input type="password" data-key-env="${escapeHtml(provider.keyEnv)}" placeholder="${saved ? "已保存，点查看可查看或修改" : "sk-..."}" />
+            <button class="ghost-button light small" type="button" data-toggle-secret data-saved="${saved ? "true" : "false"}">${saved ? "查看" : "显示"}</button>
           </div>
         </label>
       `
@@ -225,12 +233,20 @@ function renderProviders() {
     button.addEventListener("click", () => api.openExternal(button.dataset.openUrl));
   });
   els.providerGrid.querySelectorAll("[data-toggle-secret]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", () => runAction(button, async () => {
       const input = button.closest(".secret-row").querySelector("input");
       const showing = input.type === "text";
-      input.type = showing ? "password" : "text";
-      button.textContent = showing ? "显示" : "隐藏";
-    });
+      if (showing) {
+        input.type = "password";
+        button.textContent = button.dataset.saved === "true" && !input.value ? "查看" : "显示";
+        return;
+      }
+      if (button.dataset.saved === "true" && !input.value) {
+        input.value = await api.getSecret(input.dataset.keyEnv);
+      }
+      input.type = "text";
+      button.textContent = "隐藏";
+    }));
   });
   els.providerGrid.querySelectorAll("[data-save-provider]").forEach((button) => {
     button.addEventListener("click", () => saveProviderSecret(button));
@@ -247,7 +263,7 @@ function saveProviderSecret(button) {
     await api.saveSecrets({ [input.dataset.keyEnv]: input.value.trim() });
     input.value = "";
     await refresh();
-    showToast("这个 API Key 已保存到本机。");
+    showToast("这个 API Key 已保存到本机，可随时点查看后修改。");
   });
 }
 
@@ -401,7 +417,7 @@ function renderOverviewUsage() {
     els.latestUsage.textContent = "暂无";
     return;
   }
-  els.latestUsage.textContent = `${latest.route || latest.codexModel} · ${latest.status || "unknown"} · ${formatNumber(latest.totalTokens || 0)} token`;
+  els.latestUsage.textContent = `${displayRoute(latest.route || latest.codexModel)} · ${latest.status || "unknown"} · ${formatNumber(latest.totalTokens || 0)} token`;
 }
 
 function renderUsageChart(rows) {
@@ -443,7 +459,7 @@ function renderUsageTable(rows, events) {
               <span>${formatNumber(row.promptTokens)}</span>
               <span>${formatNumber(row.completionTokens)}</span>
               <span>${formatNumber(row.totalTokens)}</span>
-              <span>${row.errors ? `${row.errors} 错误` : row.lastStatus || "-"}</span>
+              <span>${row.errors ? `${row.errors} 错误：${escapeHtml(row.lastError || row.lastStatus || "")}` : row.lastStatus || "-"}</span>
               <span>${formatTime(row.lastAt)}</span>
             </div>
           `,
@@ -459,7 +475,7 @@ function renderUsageTable(rows, events) {
               <span>${escapeHtml(displayRoute(event.route))}</span>
               <span>${escapeHtml(event.upstreamModel || "-")}</span>
               <span>${escapeHtml(event.api || "-")}</span>
-              <span>${event.status || "-"}</span>
+              <span>${event.status && event.status >= 400 ? `${event.status} ${escapeHtml(event.error || "")}` : event.status || "-"}</span>
               <span>${formatNumber(event.promptTokens)}</span>
               <span>${formatNumber(event.completionTokens)}</span>
               <span>${formatNumber(event.totalTokens)}</span>
@@ -473,12 +489,12 @@ function renderUsageTable(rows, events) {
   els.usageTable.innerHTML = `
     <h3>按模型汇总</h3>
     <div class="usage-grid header">
-      <span>Codex 槽位</span><span>实际上游模型</span><span>接口</span><span>次数</span><span>输入</span><span>输出</span><span>总量</span><span>状态</span><span>最近时间</span>
+      <span>当前显示名</span><span>实际上游模型</span><span>接口</span><span>次数</span><span>输入</span><span>输出</span><span>总量</span><span>状态</span><span>最近时间</span>
     </div>
     <div class="usage-grid">${modelRows}</div>
     <h3>最近请求</h3>
     <div class="usage-grid header">
-      <span>Codex 槽位</span><span>实际上游模型</span><span>接口</span><span>状态</span><span>输入</span><span>输出</span><span>总量</span><span>耗时</span><span>时间</span>
+      <span>当前显示名</span><span>实际上游模型</span><span>接口</span><span>状态</span><span>输入</span><span>输出</span><span>总量</span><span>耗时</span><span>时间</span>
     </div>
     <div class="usage-grid">${eventRows}</div>
   `;
@@ -514,10 +530,16 @@ function keySummaryInfo() {
     }
   }
   const saved = [...needed].filter((key) => state.secretStatus?.[key]).length;
+  const missing = needed.size - saved;
+  const text = needed.size === 0
+    ? "当前选择无需 API Key"
+    : missing === 0
+      ? "所需 API Key 已全部保存"
+      : `还缺 ${missing} 个 API Key`;
   return {
     needed: needed.size,
     saved,
-    text: `${saved}/${needed.size} 已保存`,
+    text,
   };
 }
 
@@ -573,6 +595,10 @@ function modelMap() {
 }
 
 function displayRoute(route) {
+  const configured = (state.models || []).find((item) => item.id === route);
+  if (configured?.displayName) {
+    return configured.displayName;
+  }
   const slot = (state.modelSlots || []).find((item) => item.id === route);
   return slot?.label || route || "-";
 }

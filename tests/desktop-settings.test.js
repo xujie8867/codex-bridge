@@ -12,9 +12,11 @@ import {
   detectModeFromConfig,
   ensureRouterConfig,
   providerCatalog,
+  restoreCodexConfig,
   saveCustomModel,
   saveSelection,
   saveSecrets,
+  secretValue,
   secretStatus,
 } from "../desktop/settings.mjs";
 
@@ -84,6 +86,17 @@ test("saveSecrets records only non-empty values", () => {
     SILICONFLOW_API_KEY: false,
     ZHIPUAI_API_KEY: false,
   });
+});
+
+test("secretValue returns only known provider secrets", () => {
+  const rootDir = makeTempProject();
+  saveSecrets(rootDir, {
+    DEEPSEEK_API_KEY: "deepseek-key",
+    UNKNOWN_API_KEY: "unknown-key",
+  });
+
+  assert.equal(secretValue(rootDir, "DEEPSEEK_API_KEY"), "deepseek-key");
+  assert.throws(() => secretValue(rootDir, "UNKNOWN_API_KEY"), /Unknown API key env/);
 });
 
 test("provider catalog uses the current Kimi API key console", () => {
@@ -193,6 +206,62 @@ test("applyCodexConfig writes config and creates backup", () => {
   assert.match(written, /requires_openai_auth = true/);
   assert.equal(result.target, target);
   assert.equal(fs.existsSync(result.backup), true);
+});
+
+test("restoreCodexConfig restores the latest CodexBridge backup", () => {
+  const rootDir = makeTempProject();
+  const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-home-"));
+  const codexDir = path.join(homeDir, ".codex");
+  fs.mkdirSync(codexDir, { recursive: true });
+  const target = path.join(codexDir, "config.toml");
+  fs.writeFileSync(target, 'model = "before"\n', "utf8");
+
+  const first = applyCodexConfig({ rootDir, mode: MODE_HYBRID, homeDir });
+  fs.writeFileSync(target, 'model = "manual-after"\n', "utf8");
+  const second = applyCodexConfig({ rootDir, mode: MODE_ALL_API, homeDir });
+  assert.notEqual(first.backup, second.backup);
+
+  const restored = restoreCodexConfig({ homeDir });
+
+  assert.equal(restored.target, target);
+  assert.equal(restored.backup, second.backup);
+  assert.equal(fs.readFileSync(target, "utf8"), 'model = "manual-after"\n');
+});
+
+test("restoreCodexConfig prefers the latest non-CodexBridge backup", () => {
+  const rootDir = makeTempProject();
+  const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-home-"));
+  const codexDir = path.join(homeDir, ".codex");
+  fs.mkdirSync(codexDir, { recursive: true });
+  const target = path.join(codexDir, "config.toml");
+  fs.writeFileSync(target, 'model = "original-user-config"\n', "utf8");
+
+  applyCodexConfig({ rootDir, mode: MODE_HYBRID, homeDir });
+  applyCodexConfig({ rootDir, mode: MODE_ALL_API, homeDir });
+
+  restoreCodexConfig({ homeDir });
+
+  assert.equal(fs.readFileSync(target, "utf8"), 'model = "original-user-config"\n');
+});
+
+test("restoreCodexConfig falls back to the oldest backup when all backups are CodexBridge configs", () => {
+  const rootDir = makeTempProject();
+  const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-home-"));
+  const codexDir = path.join(homeDir, ".codex");
+  fs.mkdirSync(codexDir, { recursive: true });
+  const target = path.join(codexDir, "config.toml");
+  fs.writeFileSync(target, buildCodexToml({ rootDir, mode: MODE_HYBRID }), "utf8");
+
+  applyCodexConfig({ rootDir, mode: MODE_ALL_API, homeDir });
+  restoreCodexConfig({ homeDir });
+
+  assert.match(fs.readFileSync(target, "utf8"), /model_provider = "codex-bridge"/);
+});
+
+test("restoreCodexConfig explains when no backup exists", () => {
+  const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-home-"));
+
+  assert.throws(() => restoreCodexConfig({ homeDir }), /没有找到 CodexBridge 写入前的备份/);
 });
 
 function makeTempProject() {

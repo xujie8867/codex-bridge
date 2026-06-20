@@ -256,6 +256,58 @@ test("api_key routes ignore incoming Codex bearer and use provider key", async (
   }
 });
 
+test("server logs request-scoped upstream network errors", async () => {
+  const router = createRouterServer({
+    host: "127.0.0.1",
+    port: 0,
+    authToken: "router-token",
+    clientAuth: {
+      allowOpenAiBearer: true,
+    },
+    defaultModel: "gpt-5.5",
+    models: [
+      {
+        id: "gpt-5.5",
+        displayName: "GPT-5.5",
+        api: "responses",
+        baseUrl: "http://127.0.0.1:9/v1",
+        model: "gpt-5.5",
+        authMode: "codex_openai",
+      },
+    ],
+  });
+  await listen(router);
+  const baseUrl = serverUrl(router);
+  const errors = [];
+  const originalError = console.error;
+  console.error = (message) => {
+    errors.push(String(message));
+  };
+
+  try {
+    const response = await fetch(`${baseUrl}/v1/responses`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer codex-openai-token",
+      },
+      body: JSON.stringify({
+        model: "gpt-5.5",
+        input: "hello",
+      }),
+    });
+    assert.equal(response.ok, false);
+    assert.equal(response.status, 500);
+    assert.match(
+      errors.join("\n"),
+      /req_[a-z0-9]+ !! upstream route=gpt-5\.5 status=599 error=fetch failed/,
+    );
+  } finally {
+    console.error = originalError;
+    await close(router);
+  }
+});
+
 function listen(server) {
   return new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 }

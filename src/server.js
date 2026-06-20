@@ -69,10 +69,15 @@ export function createRouterServer(config = loadConfig()) {
             `previous_response_id=${body.previous_response_id || "-"} ` +
             `client_auth=${clientAuth.kind} upstream_auth=${authModeForRoute(route)}`,
         );
-        await handleResponsesRequest(body, route, history, res, {
-          requestId,
-          clientAuth,
-        });
+        try {
+          await handleResponsesRequest(body, route, history, res, {
+            requestId,
+            clientAuth,
+          });
+        } catch (error) {
+          console.error(requestErrorLine(requestId, route, error));
+          sendUpstreamError(res, error);
+        }
         return;
       }
 
@@ -134,6 +139,25 @@ function writeCors(res) {
 
 function makeRequestId() {
   return `req_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function requestErrorLine(requestId, route, error) {
+  const status = error?.statusCode || 599;
+  const cause = error?.cause?.code || error?.cause?.message || "";
+  return (
+    `[${new Date().toISOString()}] ${requestId} !! upstream ` +
+    `route=${route.id} status=${status} error=${safeLogValue(error?.message || String(error))}` +
+    (cause ? ` cause=${safeLogValue(cause)}` : "")
+  );
+}
+
+function safeLogValue(value) {
+  return String(value || "")
+    .replaceAll("\r", " ")
+    .replaceAll("\n", " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
 }
 
 const thisFile = fileURLToPath(import.meta.url);

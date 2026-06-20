@@ -159,6 +159,11 @@ ipcMain.handle("secrets:save", async (_event, secrets) => {
   return settings.secretStatus(dataRootDir);
 });
 
+ipcMain.handle("secrets:get", async (_event, keyEnv) => {
+  const settings = await loadSettings();
+  return settings.secretValue(dataRootDir, String(keyEnv || ""));
+});
+
 ipcMain.handle("models:saveSelection", async (_event, selectedModelIds) => {
   const settings = await loadSettings();
   const config = settings.readRouterConfig(dataRootDir);
@@ -245,26 +250,37 @@ ipcMain.handle("codex:initialize", async () => {
   };
 });
 
+ipcMain.handle("codex:restore", async () => {
+  const settings = await loadSettings();
+  const result = settings.restoreCodexConfig();
+  appendLog(`Restored Codex config from backup: ${result.backup}`);
+  if (result.currentBackup) {
+    appendLog(`Current config backed up before restore: ${result.currentBackup}`);
+  }
+  broadcastState();
+  return result;
+});
+
 ipcMain.handle("codex:restart", async () => {
   if (process.platform !== "win32") {
     throw new Error("Restart Codex is currently supported on Windows only.");
   }
-  const codexPath = await findRunningCodexPath();
-  if (!codexPath) {
-    throw new Error("没有找到正在运行的 Codex。请先手动打开一次 Codex，再点重启。");
+  const codexProcess = await findRunningCodexProcess();
+  if (!codexProcess?.path) {
+    throw new Error("没有找到正在运行的 Codex/ChatGPT 进程。请先手动打开 Codex，再点重启。");
   }
-  await runWindowsCommand("taskkill", ["/IM", "Codex.exe", "/T", "/F"], {
+  await runWindowsCommand("taskkill", ["/PID", String(codexProcess.pid), "/T", "/F"], {
     allowFailure: true,
   });
   await delay(900);
-  const child = spawn(codexPath, [], {
+  const child = spawn(codexProcess.path, [], {
     detached: true,
     stdio: "ignore",
     windowsHide: true,
   });
   child.unref();
-  appendLog(`Restarted Codex: ${codexPath}`);
-  return { ok: true, path: codexPath };
+  appendLog(`Restarted ${codexProcess.name}: ${codexProcess.path}`);
+  return { ok: true, path: codexProcess.path, processName: codexProcess.name };
 });
 
 ipcMain.handle("router:start", async () => {
@@ -502,18 +518,35 @@ function emptyUsageSummary() {
   };
 }
 
-async function findRunningCodexPath() {
+async function findRunningCodexProcess() {
   const command =
-    "Get-Process Codex -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Path";
+    "$names=@('Codex','ChatGPT','OpenAICodex','OpenAI Codex'); " +
+    "Get-Process | Where-Object { $names -contains $_.ProcessName } | " +
+    "Select-Object -First 1 Id,ProcessName,Path | ConvertTo-Json -Compress";
   const result = await runWindowsCommand("powershell.exe", [
     "-NoProfile",
     "-ExecutionPolicy",
     "Bypass",
     "-Command",
     command,
-  ]);
-  const found = result.output.trim().split(/\r?\n/).find(Boolean);
-  return found && fs.existsSync(found) ? found : "";
+  ], { allowFailure: true });
+  const output = result.output.trim();
+  if (!output) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(output);
+    if (!parsed?.Path || !fs.existsSync(parsed.Path)) {
+      return null;
+    }
+    return {
+      pid: parsed.Id,
+      name: parsed.ProcessName,
+      path: parsed.Path,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function runWindowsCommand(command, args, options = {}) {
@@ -547,6 +580,7 @@ async function runDesktopSmokeChecks() {
       (async () => {
         const required = [
           "#initializeCodex",
+          "#restoreCodexConfig",
           "#restartCodex",
           "#routerToggle",
           "#saveModelSelectionPanel",

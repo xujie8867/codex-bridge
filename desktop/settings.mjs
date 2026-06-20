@@ -108,6 +108,18 @@ export function secretStatus(rootDir) {
   return status;
 }
 
+export function secretValue(rootDir, keyEnv) {
+  const allowed = new Set(
+    providerCatalog(rootDir)
+      .map((provider) => provider.keyEnv)
+      .filter(Boolean),
+  );
+  if (!allowed.has(keyEnv)) {
+    throw new Error(`Unknown API key env: ${keyEnv}`);
+  }
+  return loadSecrets(rootDir)[keyEnv] || "";
+}
+
 export function envWithSecrets(rootDir, baseEnv = process.env) {
   return {
     ...baseEnv,
@@ -289,6 +301,59 @@ export function applyCodexConfig({
 
   fs.writeFileSync(target, buildCodexToml({ rootDir, mode, port }), "utf8");
   return { target, backup };
+}
+
+export function restoreCodexConfig({ homeDir = os.homedir() } = {}) {
+  const target = codexConfigPath(homeDir);
+  const targetDir = path.dirname(target);
+  if (!fs.existsSync(targetDir)) {
+    throw new Error("没有找到 CodexBridge 写入前的备份，无法自动恢复 Codex 配置。");
+  }
+
+  const backups = fs
+    .readdirSync(targetDir)
+    .filter((name) => /^config\.toml\.codexbridge\..+\.bak$/.test(name))
+    .map((name) => {
+      const fullPath = path.join(targetDir, name);
+      return { fullPath, mtimeMs: fs.statSync(fullPath).mtimeMs };
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+  if (!backups.length) {
+    throw new Error("没有找到 CodexBridge 写入前的备份，无法自动恢复 Codex 配置。");
+  }
+  const restoreFrom = preferredRestoreBackup(backups);
+
+  fs.mkdirSync(targetDir, { recursive: true });
+  let currentBackup = null;
+  if (fs.existsSync(target)) {
+    currentBackup = `${target}.before-restore.${timestamp()}.bak`;
+    fs.copyFileSync(target, currentBackup);
+  }
+  fs.copyFileSync(restoreFrom.fullPath, target);
+  return {
+    target,
+    backup: restoreFrom.fullPath,
+    currentBackup,
+  };
+}
+
+function preferredRestoreBackup(backups) {
+  const nonBridgeBackup = backups.find((backup) => {
+    try {
+      return !isCodexBridgeToml(fs.readFileSync(backup.fullPath, "utf8"));
+    } catch {
+      return false;
+    }
+  });
+  return nonBridgeBackup || backups.at(-1);
+}
+
+function isCodexBridgeToml(content) {
+  return (
+    /model_provider\s*=\s*"codex-bridge"/.test(content) ||
+    /\[model_providers\.codex-bridge]/.test(content)
+  );
 }
 
 function toTomlPath(filePath) {

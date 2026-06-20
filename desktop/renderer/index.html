@@ -38,6 +38,7 @@
             <p>把 GPT、DeepSeek、Kimi 和更多模型放进同一个 Codex 模型栏。</p>
           </div>
           <div class="status-cluster">
+            <button class="ghost-button light small" id="restoreCodexConfig">初始化 Codex 配置</button>
             <span class="status-pill muted" id="routerStatus">Router 未启动</span>
             <span class="status-pill muted" id="modeStatus">读取中</span>
           </div>
@@ -70,27 +71,27 @@
               <div class="panel-header">
                 <div>
                   <h2>运行控制</h2>
-                  <p>初始化会生成模型目录并写入 Codex 配置；Router 开关负责本地网关是否接收 Codex 请求。</p>
+                  <p>更新会生成模型目录并写入 CodexBridge 配置；Router 开关负责本地网关是否接收 Codex 请求。</p>
                 </div>
+              </div>
+              <div class="action-grid">
+                <button class="primary-button" id="initializeCodex">更新 Codex 配置</button>
+                <button class="plain-button" id="restartCodex">重启 Codex</button>
               </div>
               <button class="router-toggle" id="routerToggle" aria-pressed="false">
                 <span class="switch-track"><span></span></span>
                 <strong>Router 已关闭</strong>
                 <small>点击启动本地网关</small>
               </button>
-              <div class="action-grid">
-                <button class="primary-button" id="initializeCodex">初始化 Codex 配置</button>
-                <button class="plain-button" id="restartCodex">重启 Codex</button>
-              </div>
-              <p class="helper-copy">常规流程：选模型、填密钥、初始化配置、启动 Router，然后重启 Codex。</p>
+              <p class="helper-copy">常规流程：选模型、填密钥、更新配置、启动 Router，然后重启 Codex。右上角“初始化 Codex 配置”用于恢复到 CodexBridge 写入前的备份。</p>
             </article>
           </div>
 
           <div class="grid four metric-row">
             <article class="metric">
-              <span class="metric-label">数据目录</span>
+              <span class="metric-label">本机保存位置</span>
               <strong id="rootDir">-</strong>
-              <p>保存配置、密钥状态、模型目录和本地日志。</p>
+              <p>这里不是模型地址，只保存 CodexBridge 的配置、密钥、统计和日志。</p>
             </article>
             <article class="metric">
               <span class="metric-label">Codex 模型栏</span>
@@ -98,9 +99,9 @@
               <p>Codex 目前最多显示 5 个模型。</p>
             </article>
             <article class="metric">
-              <span class="metric-label">所选模型密钥</span>
+              <span class="metric-label">API Key 准备情况</span>
               <strong id="keySummary">-</strong>
-              <p>只统计当前 5 个槽位需要的 API Key。</p>
+              <p>只看当前模型栏里 DeepSeek、Kimi 等 API 模型需要的密钥。</p>
             </article>
             <article class="metric">
               <span class="metric-label">最近调用</span>

@@ -55,6 +55,21 @@ test("usage summary keeps latest event per model and aggregates errors", () => {
   assert.equal(summary.byModel.find((item) => item.route === "gpt-5.2").totalTokens, 15);
 });
 
+test("usage store records request-scoped upstream errors", () => {
+  const usage = createUsageStore();
+
+  usage.recordLine("[06:05:54] [2026-06-20T22:05:54.426Z] req_pbarion <- /v1/responses model=gpt-5.5 route=gpt-5.5 api=responses upstream_model=gpt-5.5 stream=true previous_response_id=- client_auth=codex_openai upstream_auth=codex_openai");
+  usage.recordLine("[06:05:54] [2026-06-20T22:05:54.426Z] req_pbarion -> upstream route=gpt-5.5 api=responses upstream_model=gpt-5.5 url=https://api.openai.com/v1/responses");
+  usage.recordLine("[06:05:54] [2026-06-20T22:05:54.960Z] req_pbarion !! upstream route=gpt-5.5 status=599 error=TypeError: fetch failed cause=UND_ERR_CONNECT_TIMEOUT");
+
+  const events = usage.events();
+  assert.equal(events.length, 1);
+  assert.equal(events[0].status, 599);
+  assert.equal(events[0].error, "TypeError: fetch failed");
+  assert.equal(events[0].errorCause, "UND_ERR_CONNECT_TIMEOUT");
+  assert.equal(usage.summary().byModel[0].errors, 1);
+});
+
 test("usage store can rebuild summary from saved events", () => {
   const usage = createUsageStore({
     initialEvents: [
