@@ -21,7 +21,7 @@ CodexBridge-Windows-x64-Portable.zip
 压缩包内的 release 目录会带版本号，例如：
 
 ```text
-CodexBridge-Windows-x64-Portable-v0.1.0-alpha.12
+CodexBridge-Windows-x64-Portable-v0.1.0
 ```
 
 ### 用户安装
@@ -73,7 +73,7 @@ CodexBridge-Windows-x64-Portable.zip
 The extracted release folder includes the version, for example:
 
 ```text
-CodexBridge-Windows-x64-Portable-v0.1.0-alpha.12
+CodexBridge-Windows-x64-Portable-v0.1.0
 ```
 
 ### Installation

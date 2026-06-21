@@ -15,6 +15,7 @@ test("Windows release archive uses formal portable package naming", () => {
 
   assert.match(workflow, /CodexBridge-Windows-x64-Portable\.zip/);
   assert.match(workflow, /releases\/latest\/download\/CodexBridge-Windows-x64-Portable\.zip/);
+  assert.match(workflow, /prerelease: false/);
   assert.doesNotMatch(workflow, /CodexBridge-windows-portable/);
   assert.match(packager, /CODEXBRIDGE_RELEASE_VERSION/);
   assert.match(packager, /CodexBridge-Windows-x64-Portable-/);

@@ -10,7 +10,16 @@ const packageJson = JSON.parse(
 const electronPackageJson = JSON.parse(
   fs.readFileSync(path.join(repoRoot, "node_modules", "electron", "package.json"), "utf8"),
 );
-const releaseVersion = process.env.CODEXBRIDGE_RELEASE_VERSION || process.env.GITHUB_REF_NAME || `v${packageJson.version}`;
+const localStamp = new Date()
+  .toISOString()
+  .replaceAll(":", "")
+  .replaceAll(".", "")
+  .replace("T", "-")
+  .replace("Z", "");
+const releaseVersion =
+  process.env.CODEXBRIDGE_RELEASE_VERSION ||
+  process.env.GITHUB_REF_NAME ||
+  `v${packageJson.version}-local-${localStamp}`;
 const safeReleaseVersion = releaseVersion.replace(/[^A-Za-z0-9._-]/g, "-");
 const outDir = path.join(repoRoot, "release", `CodexBridge-Windows-x64-Portable-${safeReleaseVersion}`);
 
