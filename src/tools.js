@@ -11,6 +11,7 @@ export function buildToolContext(responseTools = []) {
     specialToolTypes: new Map(),
     chatNameToResponseName: new Map(),
     responseNameToChatName: new Map(),
+    seenToolNames: new Set(),  // dedup to prevent duplicate tool names
   };
 
   for (const tool of responseTools || []) {
@@ -140,6 +141,8 @@ function appendResponseTool(context, tool) {
   if (tool.type === "tool_search") {
     const name = tool.name || "tool_search";
     const chatName = chatNameForResponseName(context, name);
+    if (context.seenToolNames.has(chatName)) return;
+    context.seenToolNames.add(chatName);
     context.specialToolTypes.set(name, "tool_search_call");
     context.chatTools.push({
       type: "function",
@@ -161,6 +164,8 @@ function appendResponseTool(context, tool) {
   if (tool.type === "custom") {
     const name = tool.name || "custom_tool";
     const chatName = chatNameForResponseName(context, name);
+    if (context.seenToolNames.has(chatName)) return;
+    context.seenToolNames.add(chatName);
     context.customToolNames.add(name);
     context.chatTools.push({
       type: "function",
@@ -190,6 +195,11 @@ function appendResponseTool(context, tool) {
     return;
   }
   const chatName = chatNameForResponseName(context, fn.name);
+  // Dedup: skip if this tool name was already added
+  if (context.seenToolNames.has(chatName)) {
+    return;
+  }
+  context.seenToolNames.add(chatName);
   context.chatTools.push({
     type: "function",
     function: {

@@ -211,7 +211,7 @@ function upstreamHeaders(route, context = {}, options = {}) {
 
 function upstreamBearerToken(route, context = {}) {
   if (authModeForRoute(route) === "codex_openai") {
-    if (context.clientAuth?.kind === "codex_openai" && context.clientAuth.bearerToken) {
+    if ((context.clientAuth?.kind === "codex_openai" || context.clientAuth?.kind === "local") && context.clientAuth.bearerToken) {
       return context.clientAuth.bearerToken;
     }
     const error = new Error(

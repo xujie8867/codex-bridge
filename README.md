@@ -1,307 +1,241 @@
-# CodexBridge
+# CodexBridge — Codex 多模型接入方案
 
-Local multi-model gateway and desktop manager for Codex.
+让 Codex Desktop/CLI 在模型选择器中自由切换 GPT、DeepSeek 等模型。
 
-Codex 多模型本地网关与桌面管理器。
+## 架构
 
-CodexBridge lets Codex use GPT, DeepSeek, Kimi, and more OpenAI-compatible models from one local provider and one model picker.
-
-CodexBridge 让 Codex 在一个本地 provider 和一个模型栏里同时使用 GPT、DeepSeek、Kimi 以及更多 OpenAI-compatible 模型。
-
-## Download / 下载
-
-Latest Windows portable build:
-
-最新版 Windows 免安装包：
-
-[CodexBridge-Windows-x64-Portable.zip](https://github.com/wangzhezbz/codex-bridge/releases/latest/download/CodexBridge-Windows-x64-Portable.zip)
-
-Release history:
-
-历史版本：
-
-[GitHub Releases](https://github.com/wangzhezbz/codex-bridge/releases)
-
-After downloading, extract the zip to a writable folder and run `CodexBridge.exe`.
-
-下载后解压到可写目录，然后运行 `CodexBridge.exe`。
-
-## Status / 当前状态
-
-This repository contains the CodexBridge desktop manager and local router core.
-
-当前仓库包含 CodexBridge 桌面管理器和本地路由核心。
-
-Current capabilities:
-
-- Exposes a local Responses-compatible endpoint for Codex.
-- Generates a Codex model catalog.
-- Routes GPT, DeepSeek, Kimi, and custom OpenAI-compatible models by model selection.
-- Converts Codex Responses requests to Chat Completions for providers such as DeepSeek and Kimi.
-- Keeps Codex command execution, file edits, `apply_patch`, and local tools available because Codex still owns the local tool layer.
-- Logs the real upstream model, provider, status, and token usage.
-
-当前能力：
-
-- 为 Codex 提供本地 Responses-compatible 接口。
-- 生成 Codex 模型目录。
-- 根据模型栏选择，把请求路由到 GPT、DeepSeek、Kimi 或自定义 OpenAI-compatible 模型。
-- 为 DeepSeek、Kimi 等 Chat Completions 服务做协议转换。
-- 保留 Codex 的命令执行、文件修改、`apply_patch` 和本地工具能力，因为本地工具层仍然由 Codex 执行。
-- 记录真实上游模型、provider、状态和 token 用量。
-
-## Why / 为什么做这个
-
-Codex Desktop can connect to a custom local provider, but users still need a practical way to mix multiple upstream providers in one model picker.
-
-CodexBridge acts as a local bridge:
-
-```text
-Codex Desktop -> CodexBridge -> GPT / DeepSeek / Kimi / other models
+```
+Codex App/CLI
+    ↓ experimental_bearer_token
+CodexBridge (127.0.0.1:15722)
+    ├── GPT-5.5 / GPT-5.4-mini → codex-lb (ChatGPT Plus 账号池)
+    └── DeepSeek V4 Pro/Flash   → DeepSeek API (Chat Completions 转换)
 ```
 
-Codex Desktop 可以连接自定义本地 provider，但普通用户很难把多家模型同时放进一个模型栏里稳定使用。
+## 快速开始
 
-CodexBridge 的角色就是本地桥接层：
+### 1. 克隆并安装
 
-```text
-Codex Desktop -> CodexBridge -> GPT / DeepSeek / Kimi / 更多模型
+```bash
+git clone https://github.com/xujie8867/codex-bridge.git
+cd codex-bridge
+npm install
 ```
 
-## Billing Modes / 计费模式
+### 2. 配置 API Key
 
-CodexBridge supports per-model authentication.
-
-CodexBridge 支持按模型选择认证方式。
-
-### All API / 全部 API
-
-Every model uses the API key configured for its upstream provider.
-
-所有模型都使用各自 provider 配置的 API Key。
-
-Use:
-
-使用：
-
-```text
-config/router.config.example.json
+```bash
+export DEEPSEEK_API_KEY="你的DeepSeek_API_Key"
 ```
 
-Codex config uses a local router token:
+如需持久化，写入 `~/.zshrc`：
+```bash
+echo 'export DEEPSEEK_API_KEY="你的Key"' >> ~/.zshrc
+source ~/.zshrc
+```
 
-Codex 配置使用本地 router token：
+### 3. 创建路由配置
+
+复制示例配置并编辑：
+
+```bash
+cp config/router.config.example.json config/router.config.json
+```
+
+编辑 `config/router.config.json`，填入你的后端地址和 API Key。完整示例：
+
+```json
+{
+    "host": "127.0.0.1",
+    "port": 15722,
+    "authToken": "sk-local-codex-router",
+    "clientAuth": { "allowOpenAiBearer": true },
+    "defaultModel": "gpt-5.5",
+    "models": [
+        {
+            "id": "gpt-5.5",
+            "displayName": "GPT-5.5",
+            "api": "responses",
+            "baseUrl": "http://127.0.0.1:8788/v1",
+            "model": "gpt-5.5",
+            "authMode": "codex_openai",
+            "contextWindow": 272000,
+            "priority": 0
+        },
+        {
+            "id": "gpt-5.4-mini",
+            "displayName": "GPT-5.4-Mini",
+            "api": "responses",
+            "baseUrl": "http://127.0.0.1:8788/v1",
+            "model": "gpt-5.4-mini",
+            "authMode": "codex_openai",
+            "contextWindow": 272000,
+            "priority": 1
+        },
+        {
+            "id": "deepseek-v4-pro",
+            "displayName": "DeepSeek V4 Pro",
+            "api": "chat_completions",
+            "baseUrl": "https://api.deepseek.com/v1",
+            "model": "deepseek-v4-pro",
+            "authMode": "api_key",
+            "apiKeyEnv": "DEEPSEEK_API_KEY",
+            "contextWindow": 1000000,
+            "priority": 2
+        },
+        {
+            "id": "deepseek-v4-flash",
+            "displayName": "DeepSeek V4 Flash",
+            "api": "chat_completions",
+            "baseUrl": "https://api.deepseek.com/v1",
+            "model": "deepseek-v4-flash",
+            "authMode": "api_key",
+            "apiKeyEnv": "DEEPSEEK_API_KEY",
+            "contextWindow": 1000000,
+            "priority": 3
+        }
+    ]
+}
+```
+
+> **GPT 走 codex-lb**：如果你用 ChatGPT Plus 账号池（codex-lb），`baseUrl` 指向 `http://127.0.0.1:8788/v1`。
+> 如果用 OpenAI API Key，`baseUrl` 改为 `https://api.openai.com/v1`，`authMode` 改为 `"api_key"`，加 `"apiKeyEnv": "OPENAI_API_KEY"`。
+
+### 4. 生成模型目录
+
+```bash
+npm run catalog
+```
+
+### 5. 设置开机自启 (macOS)
+
+创建 launchd 服务文件 `~/Library/LaunchAgents/com.codex.bridge.plist`：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.codex.bridge</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>/Users/你的用户名/codex-bridge/src/server.js</string>
+    </array>
+    <key>RunAtLoad</key><true/>
+    <key>KeepAlive</key><true/>
+    <key>WorkingDirectory</key>
+    <string>/Users/你的用户名/codex-bridge</string>
+    <key>StandardOutPath</key>
+    <string>/Users/你的用户名/.codex/log/codex-bridge.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/你的用户名/.codex/log/codex-bridge.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>DEEPSEEK_API_KEY</key>
+        <string>你的DeepSeek_API_Key</string>
+    </dict>
+</dict>
+</plist>
+```
+
+加载服务：
+```bash
+launchctl load ~/Library/LaunchAgents/com.codex.bridge.plist
+```
+
+### 6. 配置 Codex
+
+编辑 `~/.codex/config.toml`（注意是用户级，不是项目级）：
 
 ```toml
-[model_providers.codex-bridge]
-name = "CodexBridge"
-base_url = "http://127.0.0.1:15722/v1"
-wire_api = "responses"
-experimental_bearer_token = "sk-local-codex-router"
-```
+model = "gpt-5.5"
+model_provider = "codex-bridge"
+model_catalog_json = "/Users/你的用户名/codex-bridge/model-catalog.json"
 
-### Hybrid / 混合模式
-
-GPT models can use the Codex/OpenAI authentication that Codex sends to the local provider, while DeepSeek, Kimi, and other third-party models keep using their own API keys.
-
-GPT 模型可以使用 Codex 传给本地 provider 的 Codex/OpenAI 认证；DeepSeek、Kimi 和其他第三方模型继续使用各自 API Key。
-
-Use:
-
-使用：
-
-```text
-config/router.config.hybrid.example.json
-```
-
-Codex config uses OpenAI authentication:
-
-Codex 配置使用 OpenAI 认证：
-
-```toml
 [model_providers.codex-bridge]
 name = "CodexBridge"
 base_url = "http://127.0.0.1:15722/v1"
 wire_api = "responses"
 requires_openai_auth = true
-```
-
-Hybrid mode is implemented in the router core, but real ChatGPT subscription billing must be verified on a signed-in Codex account because unit tests cannot create a ChatGPT subscription bearer token.
-
-混合模式的路由底座已经实现，但真实 ChatGPT 订阅额度需要在已登录的 Codex 账号上实测，因为单元测试不能生成 ChatGPT 订阅 bearer token。
-
-## Quick Start / 快速开始
-
-Normal users should use the Windows portable build above. Node.js is only needed when developing from source.
-
-普通用户请使用上面的 Windows 免安装包。只有从源码开发时才需要 Node.js。
-
-### Desktop manager / 桌面管理器
-
-On Windows, download the portable zip, extract it, and double-click:
-
-Windows 下下载免安装包，解压后双击：
-
-```text
-CodexBridge.exe
-```
-
-The app opens the CodexBridge window directly. In the window, choose a billing mode, select up to five models, fill API keys, update Codex config, and start the router.
-
-应用会直接打开 CodexBridge 窗口。你可以在窗口里选择计费模式、选择最多 5 个模型、填写 API Key、更新 Codex 配置并启动 Router。
-
-For development, you can also run:
-
-开发时也可以运行：
-
-```powershell
-npm install
-npm run desktop
-```
-
-### Headless router / 无界面路由
-
-```powershell
-git clone https://github.com/wangzhezbz/codex-bridge.git
-cd codex-bridge
-Copy-Item .\config\router.config.example.json .\config\router.config.json
-notepad .\config\router.config.json
-```
-
-For hybrid mode, copy the hybrid example instead:
-
-如果使用混合模式，复制混合示例：
-
-```powershell
-Copy-Item .\config\router.config.hybrid.example.json .\config\router.config.json
-```
-
-Set API keys for the providers you enabled:
-
-设置你启用的 provider 对应 API Key：
-
-```powershell
-$env:OPENAI_API_KEY = "your-openai-api-key"
-$env:DEEPSEEK_API_KEY = "your-deepseek-api-key"
-$env:MOONSHOT_API_KEY = "your-kimi-api-key"
-```
-
-Generate the Codex model catalog:
-
-生成 Codex 模型目录：
-
-```powershell
-npm run catalog
-```
-
-Start the local router:
-
-启动本地路由：
-
-```powershell
-npm start
-```
-
-Default local endpoint:
-
-默认本地地址：
-
-```text
-http://127.0.0.1:15722
-```
-
-## Codex Config / Codex 配置
-
-Edit:
-
-编辑：
-
-```text
-%USERPROFILE%\.codex\config.toml
-```
-
-Example:
-
-示例：
-
-```toml
-model_provider = "codex-bridge"
-model = "gpt-5.5"
-model_catalog_json = "C:/path/to/codex-bridge/model-catalog.json"
-model_reasoning_effort = "medium"
-disable_response_storage = true
-network_access = "enabled"
-windows_wsl_setup_acknowledged = true
-
-[model_providers.codex-bridge]
-name = "CodexBridge"
-base_url = "http://127.0.0.1:15722/v1"
-wire_api = "responses"
 experimental_bearer_token = "sk-local-codex-router"
 ```
 
-`experimental_bearer_token` must match `authToken` in `config/router.config.json`.
+### 7. 重启 Codex App
 
-`experimental_bearer_token` 必须和 `config/router.config.json` 里的 `authToken` 一致。
+完全退出 Codex App，重新打开。模型选择器右下角应显示所有配置的模型，可自由切换。
 
-Restart Codex Desktop after changing `model_catalog_json`.
+## 验证
 
-修改 `model_catalog_json` 后，需要重启 Codex Desktop 才能刷新模型栏。
+```bash
+# 检查桥接健康
+curl http://127.0.0.1:15722/health
 
-## Verify / 验证
+# 检查模型列表
+curl http://127.0.0.1:15722/model-catalog.json
 
-Run checks:
-
-运行检查：
-
-```powershell
-npm run check
+# CLI 测试
+codex exec "hi" --dangerously-bypass-approvals-and-sandbox                    # GPT
+codex exec "hi" -m deepseek-v4-flash --dangerously-bypass-approvals-and-sandbox  # DeepSeek
 ```
 
-Check local endpoints:
+## 配置字段说明
 
-检查本地接口：
+### router.config.json
 
-```powershell
-curl.exe http://127.0.0.1:15722/health
-curl.exe http://127.0.0.1:15722/v1/models
-curl.exe http://127.0.0.1:15722/model-catalog.json
-```
+| 字段 | 说明 |
+|------|------|
+| `id` | Codex 中的模型 slug |
+| `displayName` | 模型选择器中显示的名称 |
+| `api` | `"responses"`（直接转发）或 `"chat_completions"`（协议转换）|
+| `baseUrl` | 上游 API 地址 |
+| `model` | 发送给上游的实际模型名 |
+| `authMode` | `"codex_openai"`（透传 OAuth）或 `"api_key"`（使用 API Key）|
+| `apiKeyEnv` | authMode 为 api_key 时，从哪个环境变量读取 Key |
+| `contextWindow` | 上下文窗口大小 |
+| `priority` | 排序优先级（越小越靠前）|
 
-In PowerShell, use `curl.exe` instead of `curl` because `curl` is usually an alias for `Invoke-WebRequest`.
+### config.toml
 
-PowerShell 里建议使用 `curl.exe`，因为 `curl` 通常是 `Invoke-WebRequest` 的别名。
+| 字段 | 说明 |
+|------|------|
+| `model_catalog_json` | 指向 `npm run catalog` 生成的 JSON 绝对路径 |
+| `experimental_bearer_token` | 必须与 router.config.json 的 authToken 一致 |
+| `requires_openai_auth` | 保持 Codex App 的 OAuth 登录流程 |
 
-## Safety / 安全说明
+## 关键修复（相比上游）
 
-- Do not commit `config/router.config.json`.
-- Do not commit `.env` files or API keys.
-- Keep API keys in environment variables for the headless preview.
-- The future desktop manager will store secrets locally with Windows-native protection.
+基于 [codex-bridge v0.1.5](https://github.com/wangzhezbz/codex-bridge)，增加两个修复：
 
-- 不要提交 `config/router.config.json`。
-- 不要提交 `.env` 文件或 API Key。
-- 当前无界面预览版建议把 API Key 放在环境变量里。
-- 未来桌面管理器会用 Windows 本地安全能力保存密钥。
+### 1. 本地认证兼容 (`src/upstream.js`)
 
-## Roadmap / 路线图
+允许 `local` 认证方式（experimental_bearer_token 匹配）访问 `codex_openai` 路由，解决 CLI 下 401 问题。
 
-- Desktop app with setup wizard.
-- Provider and API key management.
-- Large preset model/provider library.
-- One-click Codex config apply and rollback.
-- Usage dashboard with real upstream model and token records.
-- Live logs and diagnostics export.
-- Windows installer with no manual Node.js setup.
+### 2. 工具名去重 (`src/tools.js`)
 
-- 桌面应用和新手配置向导。
-- Provider 与 API Key 管理。
-- 更丰富的预设模型和 provider 库。
-- 一键写入 Codex 配置和一键回滚。
-- 展示真实上游模型和 token 记录的用量面板。
-- 实时日志和诊断导出。
-- Windows 安装包，不再要求用户手动安装 Node.js。
+DeepSeek 等 Chat Completions API 要求工具名唯一。Codex 可能发送重复工具定义，桥接层自动去重。
 
-## License / 许可证
+## 常见问题
+
+**Q: 模型选择器里没有自定义模型？**
+- 确认 `model_catalog_json` 是绝对路径
+- 完全退出 Codex App 再重新打开
+- 检查 `npm run catalog` 是否成功生成 `model-catalog.json`
+
+**Q: 对话报 401 Unauthorized？**
+- 检查 `experimental_bearer_token` 与 `router.config.json` 中 `authToken` 一致
+- 确认 `requires_openai_auth = true` 已设置
+
+**Q: DeepSeek 报 "Tool names must be unique"？**
+- 确保使用本仓库版本（已包含工具去重修复）
+
+**Q: 如何添加更多模型（Kimi, MiniMax 等）？**
+- 在 `router.config.json` 的 `models` 数组中添加条目
+- `api` 设为 `"chat_completions"`（走协议转换）
+- `authMode` 设为 `"api_key"`
+- 重新运行 `npm run catalog` 生成模型目录
+
+## License
 
 MIT
