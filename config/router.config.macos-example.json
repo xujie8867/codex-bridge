@@ -1,0 +1,62 @@
+{
+    "host": "127.0.0.1",
+    "port": 15722,
+    "authToken": "sk-local-codex-router",
+    "clientAuth": {
+        "allowOpenAiBearer": true
+    },
+    "defaultModel": "gpt-5.5",
+    "catalog": {
+        "contextWindow": 258400,
+        "effectiveContextWindowPercent": 95,
+        "autoCompactPercent": 80
+    },
+    "models": [
+        {
+            "id": "gpt-5.5",
+            "displayName": "GPT-5.5",
+            "description": "GPT-5.5 via ChatGPT Plus",
+            "api": "responses",
+            "baseUrl": "http://127.0.0.1:8788/v1",
+            "model": "gpt-5.5",
+            "authMode": "codex_openai",
+            "contextWindow": 272000,
+            "priority": 0
+        },
+        {
+            "id": "gpt-5.4-mini",
+            "displayName": "GPT-5.4-Mini",
+            "description": "GPT-5.4-Mini via ChatGPT Plus",
+            "api": "responses",
+            "baseUrl": "http://127.0.0.1:8788/v1",
+            "model": "gpt-5.4-mini",
+            "authMode": "codex_openai",
+            "contextWindow": 272000,
+            "priority": 1
+        },
+        {
+            "id": "deepseek-v4-pro",
+            "displayName": "DeepSeek V4 Pro",
+            "description": "DeepSeek V4 Pro via API",
+            "api": "chat_completions",
+            "baseUrl": "https://api.deepseek.com/v1",
+            "model": "deepseek-v4-pro",
+            "authMode": "api_key",
+            "apiKeyEnv": "DEEPSEEK_API_KEY",
+            "contextWindow": 1000000,
+            "priority": 2
+        },
+        {
+            "id": "deepseek-v4-flash",
+            "displayName": "DeepSeek V4 Flash",
+            "description": "DeepSeek V4 Flash via API",
+            "api": "chat_completions",
+            "baseUrl": "https://api.deepseek.com/v1",
+            "model": "deepseek-v4-flash",
+            "authMode": "api_key",
+            "apiKeyEnv": "DEEPSEEK_API_KEY",
+            "contextWindow": 1000000,
+            "priority": 3
+        }
+    ]
+}
