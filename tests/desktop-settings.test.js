@@ -57,7 +57,7 @@ test("buildCodexToml uses OpenAI auth in hybrid mode", () => {
 test("saveSecrets records only non-empty values", () => {
   const rootDir = makeTempProject();
   saveSecrets(rootDir, {
-    FENNO_API_KEY: "  gpt-key  ",
+    OPENAI_API_KEY: "  openai-key  ",
     DEEPSEEK_API_KEY: "",
     MOONSHOT_API_KEY: "kimi-key",
   });
@@ -65,13 +65,12 @@ test("saveSecrets records only non-empty values", () => {
   assert.deepEqual(secretStatus(rootDir), {
     ARK_API_KEY: false,
     DASHSCOPE_API_KEY: false,
-    FENNO_API_KEY: true,
     DEEPSEEK_API_KEY: false,
     HUNYUAN_API_KEY: false,
     MIMO_API_KEY: false,
     MINIMAX_API_KEY: false,
     MOONSHOT_API_KEY: true,
-    OPENAI_API_KEY: false,
+    OPENAI_API_KEY: true,
     OPENROUTER_API_KEY: false,
     QIANFAN_API_KEY: false,
     SILICONFLOW_API_KEY: false,
@@ -80,7 +79,7 @@ test("saveSecrets records only non-empty values", () => {
   });
 
   saveSecrets(rootDir, {
-    FENNO_API_KEY: "",
+    OPENAI_API_KEY: "",
     DEEPSEEK_API_KEY: "deepseek-key",
     MOONSHOT_API_KEY: "",
   });
@@ -88,13 +87,12 @@ test("saveSecrets records only non-empty values", () => {
   assert.deepEqual(secretStatus(rootDir), {
     ARK_API_KEY: false,
     DASHSCOPE_API_KEY: false,
-    FENNO_API_KEY: true,
     DEEPSEEK_API_KEY: true,
     HUNYUAN_API_KEY: false,
     MIMO_API_KEY: false,
     MINIMAX_API_KEY: false,
     MOONSHOT_API_KEY: true,
-    OPENAI_API_KEY: false,
+    OPENAI_API_KEY: true,
     OPENROUTER_API_KEY: false,
     QIANFAN_API_KEY: false,
     SILICONFLOW_API_KEY: false,
@@ -141,6 +139,15 @@ test("model presets include extra domestic coding and general models", () => {
   assert.ok(presetIds.has("qianfan-ernie-4-0-turbo-8k"));
   assert.ok(presetIds.has("hunyuan-turbos-latest"));
   assert.ok(presetIds.has("doubao-seed-1-8"));
+});
+
+test("built-in catalog does not recommend the private Fenno GPT provider", () => {
+  const providers = providerCatalog(makeTempProject());
+  const providerIds = new Set(providers.map((provider) => provider.id));
+  const presetIds = new Set(MODEL_PRESETS.map((model) => model.presetId));
+
+  assert.equal(providerIds.has("fenno"), false);
+  assert.equal(Array.from(presetIds).some((id) => id.startsWith("fenno-")), false);
 });
 
 test("buildRouterConfigFromSelection maps selected models into five Codex slots", () => {
@@ -193,6 +200,26 @@ test("domestic model presets route with their own provider keys", () => {
   assert.equal(config.models[0].displayName, "MiMo V2.5 Pro");
   assert.equal(config.models[1].model, "MiniMax-M3");
   assert.equal(config.models[2].baseUrl, "https://api.stepfun.ai/step_plan/v1");
+});
+
+test("all-api defaults use public API presets only", () => {
+  const rootDir = makeTempProject();
+  const config = buildRouterConfigFromSelection(rootDir, MODE_ALL_API);
+
+  assert.equal(config.models.length, 5);
+  assert.equal(config.models.some((model) => model.baseUrl.includes("fenno.ai")), false);
+  assert.equal(config.models.some((model) => model.apiKeyEnv === "FENNO_API_KEY"), false);
+  assert.equal(config.models[0].apiKeyEnv, "OPENAI_API_KEY");
+});
+
+test("bundled all-api router template does not contain private Fenno routes", () => {
+  const template = fs.readFileSync(
+    path.join(process.cwd(), "config", "router.config.example.json"),
+    "utf8",
+  );
+
+  assert.doesNotMatch(template, /fenno/i);
+  assert.doesNotMatch(template, /FENNO_API_KEY/);
 });
 
 test("custom models can be saved and routed with their own API key env", () => {

@@ -229,7 +229,7 @@ export function buildRouterConfigFromSelection(rootDir, mode = MODE_HYBRID) {
     mode === MODE_ALL_API &&
     selected.some((model) => model.authMode === "codex_openai")
   ) {
-    throw new Error("全部 API 模式不能选择“GPT 订阅”模型，请改选 GPT API 或切换到混合模式。");
+    throw new Error("全部 API 模式不能选择“GPT 订阅”模型，请改选 API 模型或切换到混合模式。");
   }
 
   const routes = selected.map((model, index) =>

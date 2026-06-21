@@ -63,7 +63,7 @@ Temporary environment variables for the current PowerShell window:
 只在当前 PowerShell 窗口生效的临时环境变量：
 
 ```powershell
-$env:FENNO_API_KEY = "your-gpt-api-key"
+$env:OPENAI_API_KEY = "your-openai-api-key"
 $env:DEEPSEEK_API_KEY = "your-deepseek-api-key"
 $env:MOONSHOT_API_KEY = "your-kimi-api-key"
 ```
@@ -73,7 +73,7 @@ Persistent user environment variables:
 永久写入当前 Windows 用户环境变量：
 
 ```powershell
-setx FENNO_API_KEY "your-gpt-api-key"
+setx OPENAI_API_KEY "your-openai-api-key"
 setx DEEPSEEK_API_KEY "your-deepseek-api-key"
 setx MOONSHOT_API_KEY "your-kimi-api-key"
 ```

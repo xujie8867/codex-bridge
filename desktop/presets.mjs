@@ -20,18 +20,6 @@ export const PROVIDERS = [
     description: "GPT-5.5 / GPT-5.4 走 Codex 订阅，不需要 API Key。",
   },
   {
-    id: "fenno",
-    name: "GPT API",
-    shortName: "GPT API",
-    keyEnv: "FENNO_API_KEY",
-    keyLabel: "GPT API Key",
-    keyUrl: "https://api.fenno.ai",
-    docsUrl: "https://api.fenno.ai",
-    baseUrl: "https://api.fenno.ai/v1",
-    authMode: "api_key",
-    description: "OpenAI-compatible GPT 中转或统一接口。",
-  },
-  {
     id: "openai",
     name: "OpenAI API",
     shortName: "OpenAI",
@@ -193,9 +181,6 @@ export const MODEL_PRESETS = [
   route("codex-gpt-5-5", "codex", "GPT-5.5", "gpt-5.5", "responses", 1000000),
   route("codex-gpt-5-4", "codex", "GPT-5.4", "gpt-5.4", "responses", 1000000),
   route("codex-gpt-5-4-mini", "codex", "GPT-5.4-Mini", "gpt-5.4-mini", "responses", 1000000),
-  route("fenno-gpt-5-5", "fenno", "GPT-5.5 API", "gpt-5.5", "responses", 1000000),
-  route("fenno-gpt-5-4", "fenno", "GPT-5.4 API", "gpt-5.4", "responses", 1000000),
-  route("fenno-gpt-5-4-mini", "fenno", "GPT-5.4-Mini API", "gpt-5.4-mini", "responses", 1000000),
   route("openai-gpt-4-1", "openai", "OpenAI GPT-4.1", "gpt-4.1", "responses", 1047576),
   route("openai-gpt-4-1-mini", "openai", "OpenAI GPT-4.1 Mini", "gpt-4.1-mini", "responses", 1047576),
   route("deepseek-v4-pro", "deepseek", "DeepSeek V4 Pro", "deepseek-v4-pro", "chat_completions", 1000000, {
@@ -268,8 +253,8 @@ export const MODEL_PRESETS = [
 export function defaultSelectedModelIds(mode) {
   if (mode === "all_api") {
     return [
-      "fenno-gpt-5-5",
-      "fenno-gpt-5-4",
+      "openai-gpt-4-1",
+      "openai-gpt-4-1-mini",
       "deepseek-v4-pro",
       "deepseek-v4-flash",
       "kimi-k2-7-code",

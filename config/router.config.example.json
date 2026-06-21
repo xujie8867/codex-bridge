@@ -14,26 +14,26 @@
   "models": [
     {
       "id": "gpt-5.5",
-      "displayName": "GPT-5.5",
-      "description": "GPT-5.5 via your GPT/OpenAI-compatible provider.",
+      "displayName": "OpenAI GPT-4.1",
+      "description": "OpenAI GPT-4.1 via OpenAI API.",
       "api": "responses",
-      "baseUrl": "https://api.fenno.ai/v1",
-      "model": "gpt-5.5",
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "gpt-4.1",
       "authMode": "api_key",
-      "apiKeyEnv": "FENNO_API_KEY",
-      "contextWindow": 1000000,
+      "apiKeyEnv": "OPENAI_API_KEY",
+      "contextWindow": 1047576,
       "priority": 0
     },
     {
       "id": "gpt-5.4",
-      "displayName": "GPT-5.4",
-      "description": "GPT-5.4 via your GPT/OpenAI-compatible provider.",
+      "displayName": "OpenAI GPT-4.1 Mini",
+      "description": "OpenAI GPT-4.1 Mini via OpenAI API.",
       "api": "responses",
-      "baseUrl": "https://api.fenno.ai/v1",
-      "model": "gpt-5.4",
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "gpt-4.1-mini",
       "authMode": "api_key",
-      "apiKeyEnv": "FENNO_API_KEY",
-      "contextWindow": 1000000,
+      "apiKeyEnv": "OPENAI_API_KEY",
+      "contextWindow": 1047576,
       "priority": 1
     },
     {

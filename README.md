@@ -163,7 +163,7 @@ Set API keys for the providers you enabled:
 设置你启用的 provider 对应 API Key：
 
 ```powershell
-$env:FENNO_API_KEY = "your-gpt-api-key"
+$env:OPENAI_API_KEY = "your-openai-api-key"
 $env:DEEPSEEK_API_KEY = "your-deepseek-api-key"
 $env:MOONSHOT_API_KEY = "your-kimi-api-key"
 ```
