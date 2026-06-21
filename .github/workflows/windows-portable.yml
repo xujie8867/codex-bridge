@@ -30,6 +30,8 @@ jobs:
         run: npm run check
 
       - name: Package Windows portable app
+        env:
+          CODEXBRIDGE_RELEASE_VERSION: ${{ github.ref_name }}
         run: npm run package:win
 
       - name: Smoke test packaged app
@@ -39,14 +41,14 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "dist-artifacts" | Out-Null
-          $archive = "dist-artifacts/CodexBridge-windows-portable-${{ github.ref_name }}.zip"
+          $archive = "dist-artifacts/CodexBridge-Windows-x64-Portable.zip"
           Compress-Archive -Path "release/*" -DestinationPath $archive -Force
 
       - name: Upload portable app
         uses: actions/upload-artifact@v4
         with:
-          name: CodexBridge-windows-portable
-          path: dist-artifacts/CodexBridge-windows-portable-${{ github.ref_name }}.zip
+          name: CodexBridge-Windows-x64-Portable
+          path: dist-artifacts/CodexBridge-Windows-x64-Portable.zip
 
       - name: Publish GitHub release
         if: startsWith(github.ref, 'refs/tags/')
@@ -54,4 +56,7 @@ jobs:
         with:
           prerelease: true
           generate_release_notes: true
-          files: dist-artifacts/CodexBridge-windows-portable-${{ github.ref_name }}.zip
+          body: |
+            Windows portable download:
+            https://github.com/${{ github.repository }}/releases/latest/download/CodexBridge-Windows-x64-Portable.zip
+          files: dist-artifacts/CodexBridge-Windows-x64-Portable.zip

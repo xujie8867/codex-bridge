@@ -8,11 +8,29 @@ CodexBridge lets Codex use GPT, DeepSeek, Kimi, and more OpenAI-compatible model
 
 CodexBridge 让 Codex 在一个本地 provider 和一个模型栏里同时使用 GPT、DeepSeek、Kimi 以及更多 OpenAI-compatible 模型。
 
+## Download / 下载
+
+Latest Windows portable build:
+
+最新版 Windows 免安装包：
+
+[CodexBridge-Windows-x64-Portable.zip](https://github.com/wangzhezbz/codex-bridge/releases/latest/download/CodexBridge-Windows-x64-Portable.zip)
+
+Release history:
+
+历史版本：
+
+[GitHub Releases](https://github.com/wangzhezbz/codex-bridge/releases)
+
+After downloading, extract the zip to a writable folder and run `CodexBridge.exe`.
+
+下载后解压到可写目录，然后运行 `CodexBridge.exe`。
+
 ## Status / 当前状态
 
-This repository currently contains the working headless router core. The desktop manager is the next milestone.
+This repository contains the CodexBridge desktop manager and local router core.
 
-当前仓库已经包含可工作的无界面路由核心。桌面管理器是下一阶段目标。
+当前仓库包含 CodexBridge 桌面管理器和本地路由核心。
 
 Current capabilities:
 
@@ -114,23 +132,23 @@ Hybrid mode is implemented in the router core, but real ChatGPT subscription bil
 
 ## Quick Start / 快速开始
 
-Developer preview requires Node.js 20 or newer.
+Normal users should use the Windows portable build above. Node.js is only needed when developing from source.
 
-当前开发预览版需要 Node.js 20 或更高版本。
+普通用户请使用上面的 Windows 免安装包。只有从源码开发时才需要 Node.js。
 
 ### Desktop manager / 桌面管理器
 
-On Windows, double-click:
+On Windows, download the portable zip, extract it, and double-click:
 
-Windows 下可以直接双击：
+Windows 下下载免安装包，解压后双击：
 
 ```text
-Start-CodexBridge.cmd
+CodexBridge.exe
 ```
 
-The first launch installs desktop dependencies if needed, then opens the CodexBridge window. In the window, choose a billing mode, fill API keys, generate the model catalog, apply Codex config, and start the router.
+The app opens the CodexBridge window directly. In the window, choose a billing mode, select up to five models, fill API keys, update Codex config, and start the router.
 
-第一次启动会自动安装桌面依赖，然后打开 CodexBridge 窗口。你可以在窗口里选择计费模式、填写 API Key、生成模型目录、写入 Codex 配置并启动 router。
+应用会直接打开 CodexBridge 窗口。你可以在窗口里选择计费模式、选择最多 5 个模型、填写 API Key、更新 Codex 配置并启动 Router。
 
 For development, you can also run:
 

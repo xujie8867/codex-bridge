@@ -1,8 +1,12 @@
 # Windows Setup / Windows 配置指南
 
-This guide is for the current headless developer preview. The future desktop app will replace most of these manual steps.
+This guide is for developers running from source. Normal users should download the Windows portable build instead:
 
-本指南适用于当前无界面开发预览版。未来桌面应用会把大部分手动步骤变成图形化操作。
+[CodexBridge-Windows-x64-Portable.zip](https://github.com/wangzhezbz/codex-bridge/releases/latest/download/CodexBridge-Windows-x64-Portable.zip)
+
+本指南适用于从源码运行的开发者。普通用户请下载 Windows 免安装包：
+
+[CodexBridge-Windows-x64-Portable.zip](https://github.com/wangzhezbz/codex-bridge/releases/latest/download/CodexBridge-Windows-x64-Portable.zip)
 
 ## Requirements / 环境要求
 
@@ -18,21 +22,9 @@ This guide is for the current headless developer preview. The future desktop app
 
 ## 1. Prepare Config / 准备配置
 
-Recommended for most users:
+Developer source setup:
 
-大多数用户建议直接双击：
-
-```text
-Start-CodexBridge.cmd
-```
-
-Then use the desktop window to select mode, fill API keys, generate the catalog, apply Codex config, and start the router.
-
-然后在桌面窗口里选择模式、填写 API Key、生成模型目录、写入 Codex 配置并启动 router。
-
-Manual developer setup:
-
-手动开发配置：
+源码开发配置：
 
 ```powershell
 cd F:\game_code\router
